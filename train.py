@@ -43,3 +43,6 @@ with torch.no_grad():
 print(output[0])
 # The output has unnormalized scores. To get probabilities, you can run a softmax on it.
 print(torch.nn.functional.softmax(output[0], dim=0))
+
+# note: use this to convert 1 color channel to RGB:
+# new = im.convert(mode='RGB')
