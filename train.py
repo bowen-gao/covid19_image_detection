@@ -240,8 +240,9 @@ def main():
             print("\t",name)
 
 
-    base_parameters = list(model_ft.parameters())[:-1]
-    fc_parameters = list(model_ft.parameters())[-1:]
+    base_parameters = list(model_ft.parameters())[:-2]
+    fc_parameters = list(model_ft.parameters())[-2:]
+    print(fc_parameters)
 
     # Observe that all parameters are being optimized
     optimizer_ft = optim.SGD([
