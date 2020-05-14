@@ -12,13 +12,24 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms, utils, models
 from torch.utils.data.sampler import SubsetRandomSampler
-os.environ['KMP_DUPLICATE_LIB_OK']='True'   #solve some MacOS specific problems
+import torch.nn.functional as F
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'  # solve some MacOS specific problems
 
 '''
 All pre-trained models expect input images normalized in the same way, i.e. mini-batches of 3-channel RGB images 
 of shape (3 x H x W), where H and W are expected to be at least 224. The images have to be loaded in to a 
 range of [0, 1] and then normalized using mean = [0.485, 0.456, 0.406] and std = [0.229, 0.224, 0.225].
 '''
+
+'''
+This code is adapted from the official PyTorch Fine-Tune example:
+(https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html)
+and official PyTorch Dataset example:
+https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
+'''
+
+
 class CovidDataset(Dataset):
 
     def __init__(self, txt_file, root_dir, transform=None):
@@ -53,6 +64,7 @@ class CovidDataset(Dataset):
 
         return sample
 
+
 def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25):
     since = time.time()
 
@@ -70,7 +82,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
             if phase == 'train':
                 model.train()  # Set model to training mode
             else:
-                model.eval()   # Set model to evaluate mode
+                model.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
             running_corrects = 0
@@ -126,6 +138,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
     model.load_state_dict(best_model_wts)
     return model, val_acc_history
 
+
 def initialize_model(model_name, num_classes, use_pretrained=True):
     # Initialize these variables which will be set in this if statement. Each of these
     #   variables is model specific.
@@ -146,8 +159,33 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
 
     return model_ft, input_size
 
+
+def test(model, device, test_loader):
+    model.eval()  # Set the model to inference mode
+    test_loss = 0
+    correct = 0
+    test_num = 0
+    with torch.no_grad():  # For the inference step, gradient is not computed
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+            test_num += len(data)
+
+    test_loss /= test_num
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.6f}%)\n'.format(
+        test_loss, correct, test_num,
+        100. * correct / test_num))
+
+
+
 def main():
     parser = argparse.ArgumentParser(description='PyTorch Baseline')
+    parser.add_argument('--mode', type=str, default='train',
+                        help='train mode or test mode')
     parser.add_argument('--train-img-path', type=str, default='./data/train',
                         help='training data path')
     parser.add_argument('--test-img-path', type=str, default='./data/test',
@@ -158,14 +196,15 @@ def main():
                         help='test txt path')
     parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
+    parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
+                        help='model load path')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--epochs', type=int, default=60, metavar='N',
-                        help='number of epochs to train (default: 60)')
-    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
-                        help='learning rate (default: 0.1)')
+    parser.add_argument('--epochs', type=int, default=30, metavar='N',
+                        help='number of epochs to train (default: 30)')
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+                        help='learning rate (default: 0.01)')
     args = parser.parse_args()
-
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     training_image_path = args.train_img_path
@@ -173,20 +212,30 @@ def main():
     train_txt_path = args.train_txt_path
     test_txt_path = args.test_txt_path
 
-    train_val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path, transform=transforms.Compose([
-                            transforms.Resize(256),
-                            transforms.CenterCrop(224),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                        ]))
-    test_dataset = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path, transform=transforms.Compose([
-                            transforms.Resize(256),
-                            transforms.CenterCrop(224),
-                            transforms.ToTensor(),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                        ]))
+    if args.mode == "test":
+        assert os.path.exists(args.model_load_path)
+        test_dataset = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path, transform=transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]))
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+        model, input_size = initialize_model("resnet18", 3, use_pretrained=True)
+        model = model.to(device)
+        model.load_state_dict(torch.load(args.model_load_path))
+        test(model, device, test_loader)
+        return
 
-    #do train_val_split
+    train_val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
+                                     transform=transforms.Compose([
+                                         transforms.Resize(256),
+                                         transforms.CenterCrop(224),
+                                         transforms.ToTensor(),
+                                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                                     ]))
+
+    # do train_val_split
     covid_index = []
     normal_index = []
     pneumonia_index = []
@@ -214,12 +263,13 @@ def main():
     val_index = np.setdiff1d(range(len(train_val_dataset)), train_index)
     print('val_index', len(val_index))
 
-    train_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size, sampler=SubsetRandomSampler(train_index))
-    val_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size, sampler=SubsetRandomSampler(val_index))
+    train_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
+                                               sampler=SubsetRandomSampler(train_index))
+    val_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
+                                             sampler=SubsetRandomSampler(val_index))
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
     dataloaders_dict['val'] = val_loader
-
 
     # Initialize the model for this run
     model_name = 'resnet18'
@@ -232,13 +282,11 @@ def main():
     # Send the model to GPU
     model_ft = model_ft.to(device)
 
-
     params_to_update = model_ft.parameters()
     print("Params to learn:")
-    for name,param in model_ft.named_parameters():
+    for name, param in model_ft.named_parameters():
         if param.requires_grad == True:
-            print("\t",name)
-
+            print("\t", name)
 
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
@@ -246,18 +294,19 @@ def main():
 
     # Observe that all parameters are being optimized
     optimizer_ft = optim.SGD([
-                    {'params': base_parameters},
-                    {'params': fc_parameters, 'lr': args.lr}
-                ], lr=0.1*args.lr, momentum=0.9)
+        {'params': base_parameters},
+        {'params': fc_parameters, 'lr': args.lr}
+    ], lr=0.1 * args.lr, momentum=0.9)
 
     # Setup the loss fxn
     criterion = nn.CrossEntropyLoss()
 
     # Train and evaluate
     num_epochs = args.epochs
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device, num_epochs=num_epochs)
+    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
+                                 num_epochs=num_epochs)
 
-    #save model
+    # save model
     torch.save(model_ft.state_dict(), args.model_save_path)
 
 
