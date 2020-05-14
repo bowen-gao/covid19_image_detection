@@ -56,7 +56,7 @@ class CovidDataset(Dataset):
         image = Image.open(img_name).convert('RGB')
         label = self.df.iloc[idx, 2]
         label = ['COVID-19', 'pneumonia', 'normal'].index(label)
-        label = np.array(label)
+        label = np.array(label, dtype=np.int64)
         sample = {'image': image, 'label': label}
 
         if self.transform:
@@ -91,7 +91,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
             for i_batch, sample_batched in enumerate(dataloaders[phase]):
                 inputs = sample_batched['image'].to(device)
                 labels = sample_batched['label'].to(device)
-
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
@@ -169,7 +168,8 @@ def test(model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            loss = nn.CrossEntropyLoss(output, target)  # sum up batch loss
+            test_loss += loss.item() * data.size(0)
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             test_num += len(data)
@@ -181,7 +181,6 @@ def test(model, device, test_loader):
         100. * correct / test_num))
 
 
-
 def main():
     parser = argparse.ArgumentParser(description='PyTorch Baseline')
     parser.add_argument('--mode', type=str, default='train',
@@ -190,9 +189,9 @@ def main():
                         help='training data path')
     parser.add_argument('--test-img-path', type=str, default='./data/test',
                         help='test data path')
-    parser.add_argument('--train-txt-path', type=str, default='./train_split_v3.txt',
+    parser.add_argument('--train-txt-path', type=str, default='./data/train_split_v3.txt',
                         help='train txt path')
-    parser.add_argument('--test-txt-path', type=str, default='./test_split_v3.txt',
+    parser.add_argument('--test-txt-path', type=str, default='./data/test_split_v3.txt',
                         help='test txt path')
     parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
