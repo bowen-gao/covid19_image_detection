@@ -245,6 +245,7 @@ def main():
                                      ]))
 
     # do train_val_split
+
     covid_index = []
     normal_index = []
     pneumonia_index = []
@@ -258,7 +259,9 @@ def main():
             pneumonia_index.append(i)
         elif label == 'normal':
             normal_index.append(i)
-
+    target = train_txt_df.iloc[:, -2]
+    class_sample_count = np.unique(target, return_counts=True)[1]
+    print(class_sample_count)
     np.random.seed(0)
     train_covid_index = np.random.choice(covid_index, int(0.85 * len(covid_index)), replace=False)
     train_normal_index = np.random.choice(normal_index, int(0.85 * len(normal_index)), replace=False)
