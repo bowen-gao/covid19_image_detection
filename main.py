@@ -124,7 +124,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
                 for i, gt in enumerate(labels.data):
                     if gt == 0:
                         num_covid += 1
-                        if preds[i] == 1:
+                        if preds[i] == 0:
                             tp += 1
             epoch_loss = running_loss / train_num if phase == 'train' else running_loss / val_num
             epoch_acc = running_corrects.double() / train_num if phase == 'train' else running_corrects.double() / val_num
