@@ -276,9 +276,9 @@ def main():
     print('val_num', val_num)
 
     train_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
-                                               sampler=SubsetRandomSampler(train_index), shuffle=True)
+                                               sampler=SubsetRandomSampler(train_index))
     val_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
-                                             sampler=SubsetRandomSampler(val_index), shuffle=True)
+                                             sampler=SubsetRandomSampler(val_index))
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
     dataloaders_dict['val'] = val_loader
