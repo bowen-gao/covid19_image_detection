@@ -239,14 +239,14 @@ def main():
     normal_index = []
     pneumonia_index = []
 
-    for i in range(len(train_val_dataset)):
-        print(i)
-        sample = train_val_dataset[i]
-        if sample['label'] == 1:
-            pneumonia_index.append(i)
-        elif sample['label'] == 0:
+    train_txt_df = pd.read_csv(args.train_txt_path, sep=" ", header=None)
+    for i in range(train_txt_df.shape[0]):
+        label = train_txt_df.iloc[i, -2]
+        if label == 'COVID-19':
             covid_index.append(i)
-        elif sample['label'] == 2:
+        elif label == 'pneumonia':
+            pneumonia_index.append(i)
+        elif label == 'normal':
             normal_index.append(i)
 
     np.random.seed(0)
