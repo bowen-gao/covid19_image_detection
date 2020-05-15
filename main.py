@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms, utils, models
 from torch.utils.data.sampler import SubsetRandomSampler
-import torch.nn.functional as F
+import time
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'  # solve some MacOS specific problems
 
@@ -72,8 +72,11 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
-
+    prev = time.time()
     for epoch in range(num_epochs):
+        t = time.time() - prev
+        prev = time.time()
+        print(t)
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
@@ -214,8 +217,7 @@ def main():
     if args.mode == "test":
         assert os.path.exists(args.model_load_path)
         test_dataset = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path, transform=transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]))
@@ -228,8 +230,7 @@ def main():
 
     train_val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
                                      transform=transforms.Compose([
-                                         transforms.Resize(256),
-                                         transforms.CenterCrop(224),
+                                         transforms.Resize((224, 224)),
                                          transforms.ToTensor(),
                                          transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                      ]))
