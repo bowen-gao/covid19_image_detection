@@ -14,6 +14,8 @@ from torchvision import datasets, transforms, utils, models
 from torch.utils.data.sampler import SubsetRandomSampler
 import time
 
+np.random.seed(148)
+
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'  # solve some MacOS specific problems
 
 '''
@@ -274,9 +276,9 @@ def main():
     print('val_num', val_num)
 
     train_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
-                                               sampler=SubsetRandomSampler(train_index))
+                                               sampler=SubsetRandomSampler(train_index), shuffle=True)
     val_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
-                                             sampler=SubsetRandomSampler(val_index))
+                                             sampler=SubsetRandomSampler(val_index), shuffle=True)
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
     dataloaders_dict['val'] = val_loader
