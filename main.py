@@ -12,6 +12,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms, utils, models
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data.sampler import WeightedRandomSampler
 import time
 
 np.random.seed(148)
@@ -237,12 +238,23 @@ def main():
         test(model, device, test_loader)
         return
 
-    train_val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                     transform=transforms.Compose([
-                                         transforms.Resize((224, 224)),
-                                         transforms.ToTensor(),
-                                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                     ]))
+    train_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+    val_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+    train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
+                                 transform=train_transform)
+
+    val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
+                               transform=val_transform)
 
     # do train_val_split
 
@@ -259,10 +271,7 @@ def main():
             pneumonia_index.append(i)
         elif label == 'normal':
             normal_index.append(i)
-    target = train_txt_df.iloc[:, -2]
-    class_sample_count = np.unique(target, return_counts=True)[1]
-    print(class_sample_count)
-    np.random.seed(0)
+
     train_covid_index = np.random.choice(covid_index, int(0.85 * len(covid_index)), replace=False)
     train_normal_index = np.random.choice(normal_index, int(0.85 * len(normal_index)), replace=False)
     train_pneumonia_index = np.random.choice(pneumonia_index, int(0.85 * len(pneumonia_index)), replace=False)
@@ -270,17 +279,31 @@ def main():
     train_index.extend(train_covid_index)
     train_index.extend(train_normal_index)
     train_index.extend(train_pneumonia_index)
+
     global train_num
     train_num = len(train_index)
     print('train_num', train_num)
-    val_index = np.setdiff1d(range(len(train_val_dataset)), train_index)
+    val_index = np.setdiff1d(range(len(train_dataset)), train_index)
     global val_num
     val_num = len(val_index)
     print('val_num', val_num)
 
-    train_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
+    target = train_txt_df.iloc[:, -2].tolist()
+    target = [['COVID-19', 'pneumonia', 'normal'].index(i) for i in target]
+    print(target)
+    class_sample_count = np.unique(target, return_counts=True)[1]
+    print(class_sample_count)
+    weight = 1. / class_sample_count
+    samples_weight = weight[target]
+    for index in val_index:
+        samples_weight[index] = 0
+    samples_weight = torch.from_numpy(samples_weight)
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                sampler=SubsetRandomSampler(train_index))
-    val_loader = torch.utils.data.DataLoader(train_val_dataset, batch_size=args.batch_size,
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
+                                               sampler=WeightedRandomSampler(samples_weight, train_num))
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size,
                                              sampler=SubsetRandomSampler(val_index))
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
