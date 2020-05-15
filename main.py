@@ -71,7 +71,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
     val_acc_history = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_acc = 0.0
+    best_recall = 0.0
     prev = time.time()
     for epoch in range(num_epochs):
         t = time.time() - prev
@@ -89,6 +89,8 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
 
             running_loss = 0.0
             running_corrects = 0
+            tp = 0
+            num_covid = 0
 
             # Iterate over data.
             for i_batch, sample_batched in enumerate(dataloaders[phase]):
@@ -117,15 +119,19 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-
+                for i, gt in enumerate(labels.data):
+                    if gt == 0:
+                        num_covid += 1
+                        if preds[i] == 1:
+                            tp += 1
             epoch_loss = running_loss / train_num if phase == 'train' else running_loss / val_num
             epoch_acc = running_corrects.double() / train_num if phase == 'train' else running_corrects.double() / val_num
-
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
+            epoch_recall = float(tp) / num_covid
+            print('{} Loss: {:.4f} Acc: {:.4f} recall: {:.4f}'.format(phase, epoch_loss, epoch_acc, epoch_recall))
 
             # deep copy the model
-            if phase == 'val' and epoch_acc > best_acc:
-                best_acc = epoch_acc
+            if phase == 'val' and epoch_recall > best_recall:
+                best_recall = epoch_recall
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'val':
                 val_acc_history.append(epoch_acc)
@@ -134,7 +140,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val Acc: {:4f}'.format(best_acc))
+    print('Best val recall: {:4f}'.format(best_recall))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
@@ -192,9 +198,9 @@ def main():
                         help='training data path')
     parser.add_argument('--test-img-path', type=str, default='./data/test',
                         help='test data path')
-    parser.add_argument('--train-txt-path', type=str, default='./train_split_v3.txt',
+    parser.add_argument('--train-txt-path', type=str, default='./data/train_split_v3.txt',
                         help='train txt path')
-    parser.add_argument('--test-txt-path', type=str, default='./test_split_v3.txt',
+    parser.add_argument('--test-txt-path', type=str, default='./data/test_split_v3.txt',
                         help='test txt path')
     parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
@@ -209,6 +215,7 @@ def main():
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
     training_image_path = args.train_img_path
     test_image_path = args.test_img_path
     train_txt_path = args.train_txt_path
@@ -261,7 +268,6 @@ def main():
     global train_num
     train_num = len(train_index)
     print('train_num', train_num)
-
     val_index = np.setdiff1d(range(len(train_val_dataset)), train_index)
     global val_num
     val_num = len(val_index)
