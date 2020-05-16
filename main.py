@@ -156,10 +156,10 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     model_ft = None
     input_size = 0
 
-    if model_name == "resnet18":
-        """ Resnet18
+    if model_name == "resnet50":
+        """ Resnet50
         """
-        model_ft = models.resnet18(pretrained=use_pretrained)
+        model_ft = models.resnet50(pretrained=use_pretrained)
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -232,7 +232,7 @@ def main():
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]))
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
-        model, input_size = initialize_model("resnet18", 3, use_pretrained=True)
+        model, input_size = initialize_model("resnet50", 3, use_pretrained=True)
         model = model.to(device)
         model.load_state_dict(torch.load(args.model_load_path))
         test(model, device, test_loader)
@@ -310,7 +310,7 @@ def main():
     dataloaders_dict['val'] = val_loader
 
     # Initialize the model for this run
-    model_name = 'resnet18'
+    model_name = 'resnet50'
     num_classes = 3
     model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
 
