@@ -176,15 +176,26 @@ def test(model, device, test_loader):
     test_loss = 0
     correct = 0
     test_num = 0
+    tp = np.array([0, 0, 0])
+    num = np.array([0, 0, 0])
     with torch.no_grad():  # For the inference step, gradient is not computed
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
+        for sample_batched in test_loader:
+            data = sample_batched['image'].to(device)
+            target = sample_batched['label'].to(device)
             output = model(data)
-            loss = nn.CrossEntropyLoss(output, target)  # sum up batch loss
+            _, preds = torch.max(output, 1)
+            print(output.shape, target.shape)
+            criterion = nn.CrossEntropyLoss()  # sum up batch loss
+            loss = criterion(output, target)
             test_loss += loss.item() * data.size(0)
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             test_num += len(data)
+            for i, gt in enumerate(target.data):
+                num[gt] += 1
+                if pred[i] == gt:
+                    tp[gt] += 1
+            print(np.divide(tp,num))
 
     test_loss /= test_num
 
