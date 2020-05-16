@@ -216,7 +216,7 @@ def main():
                         help='train txt path')
     parser.add_argument('--test-txt-path', type=str, default='./data/test_split_v3.txt',
                         help='test txt path')
-    parser.add_argument('--model-save-path', type=str, default='./baseline_no_over.pth',
+    parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
     parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
                         help='model load path')
@@ -312,10 +312,8 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                sampler=SubsetRandomSampler(train_index))
-    '''
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
                                                sampler=WeightedRandomSampler(samples_weight, train_num))
-    '''
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size,
                                              sampler=SubsetRandomSampler(val_index))
     dataloaders_dict = {}
