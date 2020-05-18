@@ -198,7 +198,6 @@ def test(model, device, test_loader):
             print(np.divide(tp, num))
 
     test_loss /= test_num
-
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.6f}%)\n'.format(
         test_loss, correct, test_num,
         100. * correct / test_num))
@@ -218,7 +217,7 @@ def main():
                         help='test txt path')
     parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
-    parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
+    parser.add_argument('--model-load-path', type=str, default='./baseline_no_over.pth',
                         help='model load path')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
@@ -242,7 +241,32 @@ def main():
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]))
-        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True)
+        # do train_val_split
+
+        covid_index = []
+        normal_index = []
+        pneumonia_index = []
+
+        test_txt_df = pd.read_csv(args.test_txt_path, sep=" ", header=None)
+        for i in range(test_txt_df.shape[0]):
+            label = test_txt_df.iloc[i, -2]
+            if label == 'COVID-19':
+                covid_index.append(i)
+            elif label == 'pneumonia':
+                pneumonia_index.append(i)
+            elif label == 'normal':
+                normal_index.append(i)
+
+        test_covid_index = np.random.choice(covid_index, 100, replace=False)
+        test_normal_index = np.random.choice(normal_index, 100, replace=False)
+        test_pneumonia_index = np.random.choice(pneumonia_index, 100, replace=False)
+        test_index = []
+        test_index.extend(test_covid_index)
+        test_index.extend(test_normal_index)
+        test_index.extend(test_pneumonia_index)
+
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size,
+                                                  sampler=SubsetRandomSampler(test_index))
         model, input_size = initialize_model("resnet50", 3, use_pretrained=True)
         model = model.to(device)
         model.load_state_dict(torch.load(args.model_load_path))
