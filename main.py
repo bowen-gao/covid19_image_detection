@@ -178,6 +178,8 @@ def test(model, device, test_loader):
     test_num = 0
     tp = np.array([0, 0, 0])
     num = np.array([0, 0, 0])
+    tn = np.array([0, 0, 0])
+    negative = np.array([0, 0, 0])
     with torch.no_grad():  # For the inference step, gradient is not computed
         for sample_batched in test_loader:
             data = sample_batched['image'].to(device)
@@ -195,7 +197,15 @@ def test(model, device, test_loader):
                 num[gt] += 1
                 if pred[i] == gt:
                     tp[gt] += 1
+                tn += 1
+                negative += 1
+                tn[pred[i]] -= 1
+                negative[pred[i]] -= 1
+                if pred[i] != gt:
+                    tn[gt] -= 1
+
             print(np.divide(tp, num))
+            print(np.divide(tn, negative))
 
     test_loss /= test_num
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.6f}%)\n'.format(
