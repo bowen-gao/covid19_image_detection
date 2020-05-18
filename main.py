@@ -317,9 +317,9 @@ def main():
         elif label == 'normal':
             normal_index.append(i)
 
-    train_covid_index = np.random.choice(covid_index, int(0.85 * len(covid_index)), replace=False)
-    train_normal_index = np.random.choice(normal_index, int(0.85 * len(normal_index)), replace=False)
-    train_pneumonia_index = np.random.choice(pneumonia_index, int(0.85 * len(pneumonia_index)), replace=False)
+    train_covid_index = np.random.choice(covid_index, len(covid_index)-50, replace=False)
+    train_normal_index = np.random.choice(normal_index, len(normal_index)-50, replace=False)
+    train_pneumonia_index = np.random.choice(pneumonia_index, len(pneumonia_index)-50, replace=False)
     train_index = []
     train_index.extend(train_covid_index)
     train_index.extend(train_normal_index)
