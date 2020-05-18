@@ -177,7 +177,9 @@ def test(model, device, test_loader):
     correct = 0
     test_num = 0
     tp = np.array([0, 0, 0])
+    tn = np.array([0, 0, 0])
     num = np.array([0, 0, 0])
+    negative = np.array([0, 0, 0])
     with torch.no_grad():  # For the inference step, gradient is not computed
         for sample_batched in test_loader:
             data = sample_batched['image'].to(device)
@@ -195,7 +197,15 @@ def test(model, device, test_loader):
                 num[gt] += 1
                 if pred[i] == gt:
                     tp[gt] += 1
+                tn += 1
+                negative += 1
+                tn[pred[i]] -= 1
+                negative[pred[i]] -= 1
+                if pred[i] != gt:
+                    print(gt)
+                    tn[gt] -= 1
             print(np.divide(tp, num))
+            print(np.divide(tn, negative))
 
     test_loss /= test_num
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.6f}%)\n'.format(
@@ -256,7 +266,7 @@ def main():
                 pneumonia_index.append(i)
             elif label == 'normal':
                 normal_index.append(i)
-
+        print(len(covid_index), len(pneumonia_index), len(normal_index))
         test_covid_index = np.random.choice(covid_index, 100, replace=False)
         test_normal_index = np.random.choice(normal_index, 100, replace=False)
         test_pneumonia_index = np.random.choice(pneumonia_index, 100, replace=False)
@@ -306,7 +316,7 @@ def main():
             pneumonia_index.append(i)
         elif label == 'normal':
             normal_index.append(i)
-
+    print(len(covid_index), len(pneumonia_index), len(normal_index))
     train_covid_index = np.random.choice(covid_index, int(0.85 * len(covid_index)), replace=False)
     train_normal_index = np.random.choice(normal_index, int(0.85 * len(normal_index)), replace=False)
     train_pneumonia_index = np.random.choice(pneumonia_index, int(0.85 * len(pneumonia_index)), replace=False)
