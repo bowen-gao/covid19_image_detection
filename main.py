@@ -61,9 +61,11 @@ class CovidDataset(Dataset):
         label = ['COVID-19', 'pneumonia', 'normal'].index(label)
         label = np.array(label, dtype=np.int64)
         sample = {'image': image, 'label': label}
-
         if self.transform:
-            sample['image'] = self.transform(sample['image'])
+            if label == 0:
+                sample['image'] = self.transform[1](sample['image'])
+            else:
+                sample['image'] = self.transform[0](sample['image'])
 
         return sample
 
@@ -227,7 +229,7 @@ def main():
                         help='test txt path')
     parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
                         help='model save path')
-    parser.add_argument('--model-load-path', type=str, default='./baseline_no_over.pth',
+    parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
                         help='model load path')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
@@ -246,11 +248,13 @@ def main():
 
     if args.mode == "test":
         assert os.path.exists(args.model_load_path)
-        test_dataset = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path, transform=transforms.Compose([
+        test_transform = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]))
+        ])
+        test_dataset = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path,
+                                    transform=[test_transform, test_transform])
         # do train_val_split
 
         covid_index = []
@@ -289,6 +293,16 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
+    covid_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        # transforms.RandomVerticalFlip(),
+        # transforms.RandomRotation(30),
+        transforms.RandomResizedCrop(size=(224, 224), scale=(0.7, 1.0)),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
     val_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -296,10 +310,10 @@ def main():
     ])
 
     train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                 transform=train_transform)
+                                 transform=[train_transform, covid_transform])
 
     val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                               transform=val_transform)
+                               transform=[val_transform, val_transform])
 
     # do train_val_split
 
@@ -317,9 +331,9 @@ def main():
         elif label == 'normal':
             normal_index.append(i)
 
-    train_covid_index = np.random.choice(covid_index, len(covid_index)-50, replace=False)
-    train_normal_index = np.random.choice(normal_index, len(normal_index)-50, replace=False)
-    train_pneumonia_index = np.random.choice(pneumonia_index, len(pneumonia_index)-50, replace=False)
+    train_covid_index = np.random.choice(covid_index, len(covid_index) - 50, replace=False)
+    train_normal_index = np.random.choice(normal_index, len(normal_index) - 50, replace=False)
+    train_pneumonia_index = np.random.choice(pneumonia_index, len(pneumonia_index) - 50, replace=False)
     train_index = []
     train_index.extend(train_covid_index)
     train_index.extend(train_normal_index)
@@ -381,6 +395,11 @@ def main():
         {'params': fc_parameters, 'lr': args.lr}
     ], lr=0.1 * args.lr, momentum=0.9)
 
+    # adam
+    optimizer_ft_adam = optim.Adam([
+        {'params': base_parameters},
+        {'params': fc_parameters, 'lr': 3e-4}
+    ], lr=3e-5)
     # Setup the loss fxn
     criterion = nn.CrossEntropyLoss()
 

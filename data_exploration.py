@@ -44,6 +44,7 @@ def intensity_distribution(img_path, txt_path):
     txt_df = pd.read_csv(txt_path, sep=" ", header=None)
     listing = os.listdir(img_path)
     for i, file in enumerate(listing):
+        print(i)
         img = Image.open(img_path + '/' + file)
         shape = np.array(img).shape
         avg_intensity = int(np.sum(img)/np.prod(shape))
@@ -69,15 +70,29 @@ def intensity_distribution(img_path, txt_path):
             d[k] /= s
 
     b1 = plt.bar(covid_intensity.keys(), covid_intensity.values(), align='center', color='r', alpha=0.7)
+    plt.legend([b1], ["COVID"])
+    plt.title('COVID-19 Intensity Distribution')
+    plt.show()
     b2 = plt.bar(pneumonia_intensity.keys(), pneumonia_intensity.values(), align='center', color='g', alpha=0.7)
+    plt.legend([b2], ["Pneumonia"])
+    plt.title('Pneumonia Intensity Distribution')
+    plt.show()
     b3 = plt.bar(normal_intensity.keys(), normal_intensity.values(), align='center', color='b', alpha=0.5)
+    plt.legend([b3], ["Normal"])
+    plt.title('Normal Intensity Distribution')
+    plt.show()
     if 'train' in txt_path:
         plt.title('COVID-19, Pneumonia and Normal Intensity Distribution on Training Set')
     elif 'test' in txt_path:
         plt.title('COVID-19, Pneumonia and Normal Intensity Distribution on Test Set')
 
+
+
+
+
     plt.legend([b1, b2, b3], ['COVID', 'Pneumonia', 'Normal'])
     plt.show()
+
 
     b4 = plt.bar(total_intensity.keys(), total_intensity.values(), align='center', color='y', alpha=0.7)
     if 'train' in txt_path:
@@ -94,9 +109,9 @@ def main():
                         help='training data path')
     parser.add_argument('--test-img-path', type=str, default='./data/test',
                         help='test data path')
-    parser.add_argument('--train-txt-path', type=str, default='./train_split_v3.txt',
+    parser.add_argument('--train-txt-path', type=str, default='./data/train_split_v3.txt',
                         help='train txt path')
-    parser.add_argument('--test-txt-path', type=str, default='./test_split_v3.txt',
+    parser.add_argument('--test-txt-path', type=str, default='./data/test_split_v3.txt',
                         help='test txt path')
     args = parser.parse_args()
 
