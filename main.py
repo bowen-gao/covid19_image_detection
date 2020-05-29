@@ -245,7 +245,7 @@ def main():
                         help='train txt path')
     parser.add_argument('--test-txt-path', type=str, default='./data/test_split_v3.txt',
                         help='test txt path')
-    parser.add_argument('--model-save-path', type=str, default='./baseline.pth',
+    parser.add_argument('--model-save-path', type=str, default='./resnet121_new_data_aug.pth',
                         help='model save path')
     parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
                         help='model load path')
@@ -310,12 +310,22 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-
+    '''
     covid_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         # transforms.RandomVerticalFlip(),
         # transforms.RandomRotation(30),
         transforms.RandomResizedCrop(size=(224, 224), scale=(0.7, 1.0)),
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    '''
+    covid_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
+        transforms.ColorJitter(brightness=0.3),
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -328,7 +338,7 @@ def main():
     ])
 
     train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                 transform=[train_transform, covid_transform])
+                                 transform=[covid_transform, covid_transform])
 
     val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
                                transform=[val_transform, val_transform])
