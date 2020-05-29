@@ -377,6 +377,7 @@ def main():
 
     global train_num
     train_num = len(train_index)
+    train_num = 3 * len(train_normal_index)
     print('train_num', train_num)
     val_index = np.setdiff1d(range(len(train_dataset)), train_index)
     global val_num
@@ -411,7 +412,7 @@ def main():
     model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
 
     # Print the model we just instantiated
-    #print(model_ft)
+    # print(model_ft)
 
     # Send the model to GPU
     model_ft = model_ft.to(device)
@@ -425,7 +426,7 @@ def main():
     '''
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
-    #print(fc_parameters)
+    # print(fc_parameters)
 
     # Observe that all parameters are being optimized
     optimizer_ft = optim.SGD([
