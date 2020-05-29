@@ -16,6 +16,7 @@ from torch.utils.data.sampler import WeightedRandomSampler
 import time
 
 np.random.seed(148)
+torch.manual_seed(148)
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'  # solve some MacOS specific problems
 
@@ -384,13 +385,12 @@ def main():
 
     target = train_txt_df.iloc[:, -2].tolist()
     target = [['COVID-19', 'pneumonia', 'normal'].index(i) for i in target]
-    print(target)
     class_sample_count = np.unique(target, return_counts=True)[1]
     print(class_sample_count)
-    class_sample_count[0] = class_sample_count[0] * 2
+    class_sample_count[0] = class_sample_count[0] * 4
     weight = 1. / class_sample_count
     samples_weight = weight[target]
-    print(samples_weight)
+    print(samples_weight[50])
     for index in val_index:
         samples_weight[index] = 0
     samples_weight = torch.from_numpy(samples_weight)
@@ -411,20 +411,21 @@ def main():
     model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
 
     # Print the model we just instantiated
-    print(model_ft)
+    #print(model_ft)
 
     # Send the model to GPU
     model_ft = model_ft.to(device)
 
     params_to_update = model_ft.parameters()
+    '''
     print("Params to learn:")
     for name, param in model_ft.named_parameters():
         if param.requires_grad == True:
             print("\t", name)
-
+    '''
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
-    print(fc_parameters)
+    #print(fc_parameters)
 
     # Observe that all parameters are being optimized
     optimizer_ft = optim.SGD([
