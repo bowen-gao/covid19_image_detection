@@ -76,7 +76,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
     val_acc_history = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_recall = 0.0
+    best_loss = 0.0
     prev = time.time()
     for epoch in range(num_epochs):
         t = time.time() - prev
@@ -135,8 +135,8 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
             print('{} Loss: {:.4f} Acc: {:.4f} recall: {:.4f}'.format(phase, epoch_loss, epoch_acc, epoch_recall))
 
             # deep copy the model
-            if phase == 'val' and epoch_recall > best_recall:
-                best_recall = epoch_recall
+            if phase == 'val' and epoch_loss < best_loss:
+                best_loss = epoch_loss
                 best_model_wts = copy.deepcopy(model.state_dict())
                 torch.save(model.state_dict(), model_save_path)
             if phase == 'val':
@@ -146,7 +146,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val recall: {:4f}'.format(best_recall))
+    print('Best val loss: {:4f}'.format(best_loss))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
@@ -178,11 +178,17 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     elif model_name == "resnext":
         """ Resnext101
         """
-        resnext101 = models.resnext101_32x8d(pretrained=True)
+        model_ft = models.resnext101_32x8d(pretrained=True)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
     elif model_name == "densenet":
         """ Densenet161
         """
-        densenet = models.densenet161(pretrained=True)
+        model_ft = models.densenet161(pretrained=True)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
     else:
         print("Invalid model name, exiting...")
         exit()
@@ -381,8 +387,10 @@ def main():
     print(target)
     class_sample_count = np.unique(target, return_counts=True)[1]
     print(class_sample_count)
+    class_sample_count[0] = class_sample_count[0] * 2
     weight = 1. / class_sample_count
     samples_weight = weight[target]
+    print(samples_weight)
     for index in val_index:
         samples_weight[index] = 0
     samples_weight = torch.from_numpy(samples_weight)
