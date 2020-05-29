@@ -76,7 +76,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
     val_acc_history = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
-    best_loss = 0.0
+    best_loss = 99.99
     prev = time.time()
     for epoch in range(num_epochs):
         t = time.time() - prev
