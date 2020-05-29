@@ -166,6 +166,22 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
+    elif model_name == "resnet152":
+        """ Resnet152
+        """
+        model_ft = models.resnet152(pretrained=use_pretrained)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
+
+    elif model_name == "resnext":
+        """ Resnext101
+        """
+        resnext101 = models.resnext101_32x8d(pretrained=True)
+    elif model_name == "densenet":
+        """ Densenet161
+        """
+        densenet = models.densenet161(pretrained=True)
     else:
         print("Invalid model name, exiting...")
         exit()
@@ -219,6 +235,8 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch Baseline')
     parser.add_argument('--mode', type=str, default='train',
                         help='train mode or test mode')
+    parser.add_argument('--model_type', type=str, default='resnet152',
+                        help='model type')
     parser.add_argument('--train-img-path', type=str, default='./data/train',
                         help='training data path')
     parser.add_argument('--test-img-path', type=str, default='./data/test',
@@ -281,7 +299,7 @@ def main():
 
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size,
                                                   sampler=SubsetRandomSampler(test_index))
-        model, input_size = initialize_model("resnet50", 3, use_pretrained=True)
+        model, input_size = initialize_model(args.model_type, 3, use_pretrained=True)
         model = model.to(device)
         model.load_state_dict(torch.load(args.model_load_path))
         test(model, device, test_loader)
@@ -369,7 +387,7 @@ def main():
     dataloaders_dict['val'] = val_loader
 
     # Initialize the model for this run
-    model_name = 'resnet50'
+    model_name = args.model_type
     num_classes = 3
     model_ft, input_size = initialize_model(model_name, num_classes, use_pretrained=True)
 
