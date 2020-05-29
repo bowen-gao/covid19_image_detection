@@ -70,7 +70,7 @@ class CovidDataset(Dataset):
         return sample
 
 
-def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25):
+def train_model(model, dataloaders, criterion, optimizer, device, model_save_path, num_epochs=25):
     since = time.time()
 
     val_acc_history = []
@@ -138,6 +138,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, num_epochs=25)
             if phase == 'val' and epoch_recall > best_recall:
                 best_recall = epoch_recall
                 best_model_wts = copy.deepcopy(model.state_dict())
+                torch.save(model.state_dict(), model_save_path)
             if phase == 'val':
                 val_acc_history.append(epoch_acc)
 
@@ -310,7 +311,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    '''
+
     covid_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         # transforms.RandomVerticalFlip(),
@@ -330,7 +331,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-
+    '''
     val_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -434,7 +435,7 @@ def main():
     # Train and evaluate
     num_epochs = args.epochs
     model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
-                                 num_epochs=num_epochs)
+                                 model_save_path=args.model_save_path, num_epochs=num_epochs)
 
     # save model
     torch.save(model_ft.state_dict(), args.model_save_path)
