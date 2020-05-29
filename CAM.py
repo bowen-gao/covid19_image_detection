@@ -16,6 +16,23 @@ np.random.seed(148)
 torch.manual_seed(148)
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'  # solve some MacOS specific problems
 
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+            # The normalize code -> t.sub_(m).div_(s)
+        return tensor
+
 
 class CovidDataset(Dataset):
 
@@ -102,7 +119,8 @@ def cam(final_map, fc_w, fc_b, img):
     final_cam = np.divide(final_cam, cam_max)
     final_cam = cv2.resize(final_cam, img.shape[:2])
 
-    return final_cam, img
+
+    return final_cam
 
 
 
@@ -117,7 +135,7 @@ def main():
                         help='train txt path')
     parser.add_argument('--test-txt-path', type=str, default='./test_split_v3.txt',
                         help='test txt path')
-    parser.add_argument('--model-load-path', type=str, default='./baseline.pth',
+    parser.add_argument('--model-load-path', type=str, default='./baseline_with_aug.pth',
                         help='model load path')
     args = parser.parse_args()
 
@@ -138,6 +156,11 @@ def main():
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]))
+
+    test_raw = CovidDataset(txt_file=test_txt_path, root_dir=test_image_path, transform=transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
     ]))
 
     covid_index = []
@@ -189,6 +212,8 @@ def main():
                                               sampler=SubsetRandomSampler(train_index))
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1,
                                               sampler=SubsetRandomSampler(test_index))
+    test_raw_loader = torch.utils.data.DataLoader(test_raw, batch_size=1,
+                                              sampler=SubsetRandomSampler(test_index))
 
 
     model, input_size = initialize_model("resnet50", 3, use_pretrained=True)
@@ -199,37 +224,64 @@ def main():
     resnet_50_backbone = ResNetBackbone(model)
     resnet_50_backbone.eval()
 
+    '''
     with torch.no_grad():
         for i, sample in enumerate(train_loader):
-            input = sample['image'].to(device)
-            output = resnet_50_backbone(input)
-            prediction = np.argmax(model(input))
-            fc_w = list(model.parameters())[-2]
-            fc_b = list(model.parameters())[-1]
-            fc_w = fc_w[prediction]
-            fc_b = fc_b[prediction]
-            final_cam, img = cam(output, fc_w, fc_b, sample['image'])
-            img_with_cam = cv2.addWeighted(final_cam, 0.8, img, 0.2, 0)
-            plt.imshow(img_with_cam)
-            label_list = ['COVID', 'Peunomia', 'Normal']
-            plt.title(label_list[int(sample['label'])])
-            plt.show()
+            if sample['label'] == 0:
+                input = sample['image'].to(device)
+                output = resnet_50_backbone(input)
+                prediction = np.argmax(model(input))
+                fc_w = list(model.parameters())[-2]
+                fc_b = list(model.parameters())[-1]
+                fc_w = fc_w[prediction]
+                fc_b = fc_b[prediction]
+                final_cam, img = cam(output, fc_w, fc_b, sample['image'])
+                img_with_cam = cv2.addWeighted(final_cam, 0.3, img, 0.5, 0)
+
+                plt.imshow(img_with_cam)
+                label_list = ['COVID', 'Peunomia', 'Normal']
+                plt.title(label_list[int(sample['label'])])
+                plt.show()
+    '''
+
 
     with torch.no_grad():
         for i, sample in enumerate(test_loader):
-            input = sample['image'].to(device)
+            sample_input = sample
+            #print(count)np.exp(model(input)[0])
+            input = sample_input['image'].to(device)
             output = resnet_50_backbone(input)
             prediction = np.argmax(model(input))
-            fc_w = list(model.parameters())[-2]
-            fc_b = list(model.parameters())[-1]
-            fc_w = fc_w[prediction]
-            fc_b = fc_b[prediction]
-            final_cam, img = cam(output, fc_w, fc_b, sample['image'])
-            img_with_cam = cv2.addWeighted(final_cam, 0.8, img, 0.2, 0)
-            plt.imshow(img_with_cam)
-            label_list = ['COVID', 'Peunomia', 'Normal']
-            plt.title(label_list[int(sample['label'])])
-            plt.show()
+            if sample_input['label'] == 0 and int(prediction) == sample_input['label']:
+                print(prediction)
+                score = np.exp(model(input)[0, prediction])/np.sum(np.array(np.exp(model(input)[0])))
+                print(score)
+                fc_w = list(model.parameters())[-2]
+                fc_b = list(model.parameters())[-1]
+                fc_w = fc_w[prediction]
+                fc_b = fc_b[prediction]
+
+                unorm = UnNormalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+                img = np.array(transforms.ToPILImage()(unorm(sample_input['image'][0])))
+                #print(img.shape)
+                plt.imshow(img)
+                label_list = ['COVID', 'Peunomia', 'Normal']
+                plt.title(label_list[int(sample_input['label'])])
+                plt.show()
+
+                final_cam = cam(output, fc_w, fc_b, sample_input['image'])
+                final_cam = np.array(Image.fromarray(np.uint8(final_cam* 255)).convert('RGB'))
+                #print(final_cam.size)
+
+                heatmap = cv2.applyColorMap(final_cam, cv2.COLORMAP_JET)
+                img_with_cam = np.uint8(heatmap * 0.3 + img * 0.5)
+                #img_with_cam = cv2.addWeighted(final_cam, 0.3, img, 0.5, 0)
+                plt.imshow(img_with_cam)
+                label_list = ['COVID', 'Peunomia', 'Normal']
+                plt.title(label_list[int(sample_input['label'])])
+                plt.show()
+
+
 
 if __name__ == '__main__':
     main()
