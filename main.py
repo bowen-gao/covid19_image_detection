@@ -161,7 +161,15 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     model_ft = None
     input_size = 0
 
-    if model_name == "resnet50":
+    if model_name == "resnet18":
+        """ Resnet18
+        """
+        model_ft = models.resnet18(pretrained=use_pretrained)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        input_size = 224
+
+    elif model_name == "resnet50":
         """ Resnet50
         """
         model_ft = models.resnet50(pretrained=use_pretrained)
@@ -188,8 +196,8 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Densenet161
         """
         model_ft = models.densenet161(pretrained=True)
-        num_ftrs = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        num_ftrs = model_ft.classifier.in_features
+        model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
     else:
         print("Invalid model name, exiting...")
@@ -244,7 +252,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch Baseline')
     parser.add_argument('--mode', type=str, default='train',
                         help='train mode or test mode')
-    parser.add_argument('--model_type', type=str, default='resnet152',
+    parser.add_argument('--model-type', type=str, default='resnet152',
                         help='model type')
     parser.add_argument('--train-img-path', type=str, default='./data/train',
                         help='training data path')
