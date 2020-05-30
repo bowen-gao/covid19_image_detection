@@ -315,7 +315,7 @@ def main():
         test_index.extend(test_pneumonia_index)
 
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size,
-                                                  sampler=SubsetRandomSampler(test_index))
+                                                  sampler=SubsetRandomSampler(test_index), num_workers=8)
         model, input_size = initialize_model(args.model_type, 3, use_pretrained=True)
         model = model.to(device)
         model.load_state_dict(torch.load(args.model_load_path))
@@ -328,19 +328,19 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    covid_transform = transforms.Compose([
+    covid_transform1 = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         # transforms.RandomVerticalFlip(),
         # transforms.RandomRotation(30),
-        transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
-        transforms.ColorJitter(brightness=0.3),
-        transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
+        #transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
+        #transforms.ColorJitter(brightness=0.3),
+        #transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    '''
-    covid_transform = transforms.Compose([
+
+    covid_transform2 = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(15),
         transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
@@ -349,7 +349,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    '''
+
     val_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -357,10 +357,10 @@ def main():
     ])
 
     train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                 transform=[covid_transform, covid_transform])
+                                 transform=[covid_transform1, covid_transform1])
 
     val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                               transform=[covid_transform, covid_transform])
+                               transform=[covid_transform1, covid_transform1])
 
     # do train_val_split
 
@@ -408,11 +408,11 @@ def main():
     samples_weight = torch.from_numpy(samples_weight)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
-                                               sampler=SubsetRandomSampler(train_index))
+                                               sampler=SubsetRandomSampler(train_index), num_workers=8)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
-                                               sampler=WeightedRandomSampler(samples_weight, train_num))
+                                               sampler=WeightedRandomSampler(samples_weight, train_num), num_workers=8)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size,
-                                             sampler=SubsetRandomSampler(val_index))
+                                             sampler=SubsetRandomSampler(val_index), num_workers=8)
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
     dataloaders_dict['val'] = val_loader
