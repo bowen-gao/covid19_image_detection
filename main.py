@@ -141,6 +141,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
                 best_model_wts = copy.deepcopy(model.state_dict())
                 torch.save(model.state_dict(), model_save_path)
             if phase == 'val':
+                torch.save(model.state_dict(), "ckpts/" + str(epoch))
                 val_acc_history.append(epoch_acc)
 
         print()
@@ -346,7 +347,7 @@ def main():
     ])
 
     train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                 transform=[covid_transform, covid_transform])
+                                 transform=[train_transform, covid_transform])
 
     val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
                                transform=[val_transform, val_transform])
@@ -388,7 +389,7 @@ def main():
     target = [['COVID-19', 'pneumonia', 'normal'].index(i) for i in target]
     class_sample_count = np.unique(target, return_counts=True)[1]
     print(class_sample_count)
-    class_sample_count[0] = class_sample_count[0] * 4
+    class_sample_count[0] = class_sample_count[0] * 2
     weight = 1. / class_sample_count
     samples_weight = weight[target]
     print(samples_weight[50])
