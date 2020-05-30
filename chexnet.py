@@ -447,7 +447,6 @@ def main():
         if param.requires_grad == True:
             print("\t", name)
     '''
-    print(list(model_ft.parameters()))
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
     # print(fc_parameters)
