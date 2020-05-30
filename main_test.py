@@ -469,7 +469,7 @@ def main():
 
     # Train and evaluate
     num_epochs = args.epochs
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
+    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft_adam, device=device,
                                  model_save_path=args.model_save_path, num_epochs=num_epochs)
 
     # save model
