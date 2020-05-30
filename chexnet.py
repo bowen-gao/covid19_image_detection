@@ -193,9 +193,10 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
     elif model_name == "densenet":
-        """ Densenet161
+        """ Densenet121
         """
-        model_ft = models.densenet161(pretrained=True)
+        model_ft = models.densenet121(pretrained=True)
+        model_ft.load_state_dict(torch.load("m-25012018-123527.pth.tar"))
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
@@ -252,7 +253,7 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch Baseline')
     parser.add_argument('--mode', type=str, default='train',
                         help='train mode or test mode')
-    parser.add_argument('--model-type', type=str, default='resnet152',
+    parser.add_argument('--model-type', type=str, default='densenet',
                         help='model type')
     parser.add_argument('--train-img-path', type=str, default='./data/train',
                         help='training data path')
@@ -456,7 +457,7 @@ def main():
 
     # Train and evaluate
     num_epochs = args.epochs
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft_adam, device=device,
+    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
                                  model_save_path=args.model_save_path, num_epochs=num_epochs)
 
     # save model
