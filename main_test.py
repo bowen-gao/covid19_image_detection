@@ -113,7 +113,6 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
                     #   mode we calculate the loss by summing the final output and the auxiliary output
                     #   but in testing we only consider the final output.
                     outputs = model(inputs)
-                    print(outputs)
                     loss = criterion(outputs, labels)
 
                     _, preds = torch.max(outputs, 1)
