@@ -196,7 +196,7 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
         """ Densenet121
         """
         model_ft = models.densenet121(pretrained=True)
-        model_ft.load_state_dict(torch.load("m-25012018-123527.pth.tar"))
+        model_ft.load_state_dict(torch.load("m-25012018-123527.pth.tar")["state_dict"])
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
