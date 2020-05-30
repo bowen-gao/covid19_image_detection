@@ -15,6 +15,10 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data.sampler import WeightedRandomSampler
 import time
 
+from collections import OrderedDict
+
+from DensenetModels import DenseNet121
+
 np.random.seed(148)
 torch.manual_seed(148)
 
@@ -113,6 +117,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
                     #   mode we calculate the loss by summing the final output and the auxiliary output
                     #   but in testing we only consider the final output.
                     outputs = model(inputs)
+                    print(outputs)
                     loss = criterion(outputs, labels)
 
                     _, preds = torch.max(outputs, 1)
@@ -195,10 +200,17 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     elif model_name == "densenet":
         """ Densenet121
         """
-        model_ft = models.densenet121(pretrained=True)
-        model_ft.load_state_dict(torch.load("m-25012018-123527.pth.tar")["state_dict"])
+        model_ft = DenseNet121(14).densenet121.cuda()
+        modelCheckpoint = torch.load("model.pth.tar")
+        state_dict = modelCheckpoint['state_dict']
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:]  # remove 'module.' of DataParallel
+            new_state_dict[name] = v
+        model_ft.load_state_dict(new_state_dict, strict=False)
+        print(1)
         num_ftrs = model_ft.classifier.in_features
-        model_ft.classifier = nn.Linear(num_ftrs, num_classes)
+        model_ft.classifier = nn.Sequential(nn.Linear(num_ftrs, num_classes), nn.Sigmoid())
         input_size = 224
     else:
         print("Invalid model name, exiting...")
@@ -437,6 +449,7 @@ def main():
         if param.requires_grad == True:
             print("\t", name)
     '''
+    print(list(model_ft.parameters()))
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
     # print(fc_parameters)

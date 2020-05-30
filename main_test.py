@@ -113,6 +113,7 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
                     #   mode we calculate the loss by summing the final output and the auxiliary output
                     #   but in testing we only consider the final output.
                     outputs = model(inputs)
+                    print(outputs)
                     loss = criterion(outputs, labels)
 
                     _, preds = torch.max(outputs, 1)
@@ -430,12 +431,23 @@ def main():
     model_ft = model_ft.to(device)
 
     params_to_update = model_ft.parameters()
-    '''
+
     print("Params to learn:")
     for name, param in model_ft.named_parameters():
         if param.requires_grad == True:
             print("\t", name)
     '''
+    for name, child in model_ft.named_children():
+        if name in ['layer3', 'layer4', 'fc']:
+            print(name + ' is unfrozen')
+            for param in child.parameters():
+                param.requires_grad = True
+        else:
+            print(name + ' is frozen')
+            for param in child.parameters():
+                param.requires_grad = False
+    '''
+    # print(list(model_ft.parameters()))
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
     # print(fc_parameters)
@@ -444,7 +456,9 @@ def main():
     optimizer_ft = optim.SGD([
         {'params': base_parameters},
         {'params': fc_parameters, 'lr': args.lr}
-    ], lr=0.1 * args.lr, momentum=0.9, weight_decay=1e-5)
+    ], lr=0 * args.lr, momentum=0.9, weight_decay=1e-5)
+
+    # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model_ft.parameters()), lr=0.0006, momentum=0.9)
 
     # adam
     optimizer_ft_adam = optim.Adam([
@@ -456,7 +470,7 @@ def main():
 
     # Train and evaluate
     num_epochs = args.epochs
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft_adam, device=device,
+    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
                                  model_save_path=args.model_save_path, num_epochs=num_epochs)
 
     # save model
