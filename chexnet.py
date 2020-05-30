@@ -17,8 +17,6 @@ import time
 
 from collections import OrderedDict
 
-from DensenetModels import DenseNet121
-
 np.random.seed(148)
 torch.manual_seed(148)
 
@@ -200,7 +198,9 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
     elif model_name == "densenet":
         """ Densenet121
         """
-        model_ft = DenseNet121(14).densenet121.cuda()
+        model_ft = models.densenet121(True)
+        num_ftrs = model_ft.classifier.in_features
+        model_ft.classifier = nn.Linear(num_ftrs, 14)
         modelCheckpoint = torch.load("model.pth.tar")
         state_dict = modelCheckpoint['state_dict']
         new_state_dict = OrderedDict()
@@ -208,9 +208,7 @@ def initialize_model(model_name, num_classes, use_pretrained=True):
             name = k[7:]  # remove 'module.' of DataParallel
             new_state_dict[name] = v
         model_ft.load_state_dict(new_state_dict, strict=False)
-        print(1)
-        num_ftrs = model_ft.classifier.in_features
-        model_ft.classifier = nn.Sequential(nn.Linear(num_ftrs, num_classes), nn.Sigmoid())
+        model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
     else:
         print("Invalid model name, exiting...")
