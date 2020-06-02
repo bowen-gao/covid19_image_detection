@@ -147,20 +147,20 @@ def train_model(model, dataloaders, criterion, optimizer, device, model_save_pat
                 else:
                     k_val_loss += epoch_loss
                     k_val_rec += epoch_recall
-            print(epoch, ":")
-            print(
-                '{} Loss: {:.4f}  recall: {:.4f}'.format("train", k_train_loss / 5, k_tarin_rec / 5))
-            print(
-                '{} Loss: {:.4f}  recall: {:.4f}'.format("val", k_val_loss / 5, k_val_rec / 5))
+        print(epoch, ":")
+        print(
+            '{} Loss: {:.4f}  recall: {:.4f}'.format("train", k_train_loss / 5, k_tarin_rec / 5))
+        print(
+            '{} Loss: {:.4f}  recall: {:.4f}'.format("val", k_val_loss / 5, k_val_rec / 5))
 
-            # deep copy the model
-            if phase == 'val' and epoch_loss < best_loss:
-                best_loss = epoch_loss
-                best_model_wts = copy.deepcopy(model.state_dict())
-                torch.save(model.state_dict(), model_save_path)
-            if phase == 'val':
-                torch.save(model.state_dict(), "ckpts/" + str(epoch))
-                val_acc_history.append(epoch_acc)
+        # deep copy the model
+        if phase == 'val' and epoch_loss < best_loss:
+            best_loss = epoch_loss
+            best_model_wts = copy.deepcopy(model.state_dict())
+            torch.save(model.state_dict(), model_save_path)
+        if phase == 'val':
+            torch.save(model.state_dict(), "ckpts/" + str(epoch))
+            val_acc_history.append(epoch_acc)
 
         print()
 
