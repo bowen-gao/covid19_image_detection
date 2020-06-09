@@ -315,7 +315,7 @@ def main():
         test_index.extend(test_pneumonia_index)
 
         test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size,
-                                                  sampler=SubsetRandomSampler(test_index))
+                                                  sampler=SubsetRandomSampler(test_index), num_workers=8)
         model, input_size = initialize_model(args.model_type, 3, use_pretrained=True)
         model = model.to(device)
         model.load_state_dict(torch.load(args.model_load_path))
@@ -328,19 +328,20 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    covid_transform = transforms.Compose([
+    covid_transform1 = transforms.Compose([
+        transforms.Resize((256, 256)),
         transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop(size=(224, 224), scale=(0.7, 1.0)),
         # transforms.RandomVerticalFlip(),
         # transforms.RandomRotation(30),
-        transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
-        transforms.ColorJitter(brightness=0.3),
-        transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
-        transforms.Resize((224, 224)),
+        # transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
+        # transforms.ColorJitter(brightness=0.3),
+        # transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    '''
-    covid_transform = transforms.Compose([
+
+    covid_transform2 = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(15),
         transforms.RandomAffine(0, (0.25, 0.25), scale=(0.8, 1.2)),
@@ -349,7 +350,7 @@ def main():
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
-    '''
+
     val_transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -357,10 +358,10 @@ def main():
     ])
 
     train_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                                 transform=[covid_transform, covid_transform])
+                                 transform=[covid_transform1, covid_transform1])
 
     val_dataset = CovidDataset(txt_file=train_txt_path, root_dir=training_image_path,
-                               transform=[covid_transform, covid_transform])
+                               transform=[covid_transform1, covid_transform1])
 
     # do train_val_split
 
@@ -408,11 +409,11 @@ def main():
     samples_weight = torch.from_numpy(samples_weight)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
-                                               sampler=SubsetRandomSampler(train_index))
+                                               sampler=SubsetRandomSampler(train_index), num_workers=8)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
-                                               sampler=WeightedRandomSampler(samples_weight, train_num))
+                                               sampler=WeightedRandomSampler(samples_weight, train_num), num_workers=8)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size,
-                                             sampler=SubsetRandomSampler(val_index))
+                                             sampler=SubsetRandomSampler(val_index), num_workers=8)
     dataloaders_dict = {}
     dataloaders_dict['train'] = train_loader
     dataloaders_dict['val'] = val_loader
@@ -429,12 +430,23 @@ def main():
     model_ft = model_ft.to(device)
 
     params_to_update = model_ft.parameters()
-    '''
+
     print("Params to learn:")
     for name, param in model_ft.named_parameters():
         if param.requires_grad == True:
             print("\t", name)
     '''
+    for name, child in model_ft.named_children():
+        if name in ['layer3', 'layer4', 'fc']:
+            print(name + ' is unfrozen')
+            for param in child.parameters():
+                param.requires_grad = True
+        else:
+            print(name + ' is frozen')
+            for param in child.parameters():
+                param.requires_grad = False
+    '''
+    # print(list(model_ft.parameters()))
     base_parameters = list(model_ft.parameters())[:-2]
     fc_parameters = list(model_ft.parameters())[-2:]
     # print(fc_parameters)
@@ -443,7 +455,9 @@ def main():
     optimizer_ft = optim.SGD([
         {'params': base_parameters},
         {'params': fc_parameters, 'lr': args.lr}
-    ], lr=0.1 * args.lr, momentum=0.9, weight_decay=1e-5)
+    ], lr=0 * args.lr, momentum=0.9, weight_decay=1e-5)
+
+    # optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model_ft.parameters()), lr=0.0006, momentum=0.9)
 
     # adam
     optimizer_ft_adam = optim.Adam([
@@ -455,7 +469,7 @@ def main():
 
     # Train and evaluate
     num_epochs = args.epochs
-    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft, device=device,
+    model_ft, hist = train_model(model_ft, dataloaders_dict, criterion, optimizer_ft_adam, device=device,
                                  model_save_path=args.model_save_path, num_epochs=num_epochs)
 
     # save model
